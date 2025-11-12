@@ -7,6 +7,7 @@
 :root {
     --bg-primary-color: #0c0c0c;
     --bg-fill-color: #0bff44;
+    --bg-food-color: #ff7b00;
     --text-primary-color: #f0f0f0;
     --space-xs: 4px;
     --space-sm: 8px;
@@ -79,4 +80,8 @@ section .infos {
 
 .fill {
     background-color: var(--bg-fill-color);
+}
+
+.food {
+    background-color: var(--bg-food-color);
 }

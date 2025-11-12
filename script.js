@@ -7,6 +7,17 @@ let direction = 'right';
 let columns = 0;
 let rows = 0;
 let tickInterval = 400;
+let gameLoop = null;
+
+// Food spawn (initialized later after grid is ready)
+let food = { x: 0, y: 0 };
+
+function generateFood() {
+  food = {
+    x: Math.floor(Math.random() * columns),
+    y: Math.floor(Math.random() * rows)
+  };
+}
 
 function renderGrid() {
   board.innerHTML = '';
@@ -33,13 +44,13 @@ function renderGrid() {
         alignItems: 'center',
         justifyContent: 'center'
       });
-      block.innerText = `${row}-${col}`;
       board.appendChild(block);
       blocks[`${row}-${col}`] = block;
     }
   }
 
   renderSnake();
+  renderFood();
 }
 
 function renderSnake() {
@@ -51,8 +62,13 @@ function renderSnake() {
     const key = `${y}-${x}`;
     const segment = blocks[key];
     if (segment) segment.style.backgroundColor = 'limegreen';
-    console.log(`Snake segment → x=${x}, y=${y}`);
   });
+}
+
+function renderFood() {
+  const key = `${food.y}-${food.x}`;
+  const foodBlock = blocks[key];
+  if (foodBlock) foodBlock.style.backgroundColor = 'red';
 }
 
 function moveSnake() {
@@ -63,14 +79,21 @@ function moveSnake() {
   else if (direction === 'up') head.y -= 1;
   else if (direction === 'down') head.y += 1;
 
-  // Wrap around edges
-  if (head.x < 0) head.x = columns - 1;
-  else if (head.x >= columns) head.x = 0;
-  if (head.y < 0) head.y = rows - 1;
-  else if (head.y >= rows) head.y = 0;
+  // Game over if hits wall
+  if (head.x < 0 || head.x >= columns || head.y < 0 || head.y >= rows) {
+    alert('Game Over');
+    clearInterval(gameLoop);
+    return;
+  }
 
-  snake.push(head);
-  snake.shift();
+  // If eats food
+  if (head.x === food.x && head.y === food.y) {
+    snake.push(head); // grow snake
+    generateFood(); // new food
+  } else {
+    snake.push(head);
+    snake.shift(); // move normally
+  }
 }
 
 function render() {
@@ -81,25 +104,15 @@ function render() {
 function handleKeydown(event) {
   const key = event.key.toLowerCase();
 
-  if (key === 'arrowup') {
-    direction = 'up';
-    console.log('⬆️  UP key pressed');
-  } else if (key === 'arrowdown') {
-    direction = 'down';
-    console.log('⬇️  DOWN key pressed');
-  } else if (key === 'arrowleft') {
-    direction = 'left';
-    console.log('⬅️  LEFT key pressed');
-  } else if (key === 'arrowright') {
-    direction = 'right';
-    console.log('➡️  RIGHT key pressed');
-  }
-
-  // Instantly move snake when key is pressed
-  render();
+  if (key === 'arrowup' && direction !== 'down') direction = 'up';
+  else if (key === 'arrowdown' && direction !== 'up') direction = 'down';
+  else if (key === 'arrowleft' && direction !== 'right') direction = 'left';
+  else if (key === 'arrowright' && direction !== 'left') direction = 'right';
 }
 
 window.addEventListener('resize', renderGrid);
 window.addEventListener('keydown', handleKeydown);
 
 renderGrid();
+generateFood();
+gameLoop = setInterval(render, tickInterval);
