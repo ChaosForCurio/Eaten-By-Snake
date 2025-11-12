@@ -9,7 +9,7 @@ const highScoreDisplay = document.querySelector('#high-Score');
 
 const BLOCK_SIZE = 50;
 const GAP_SIZE = 5;
-const MOVE_INTERVAL = 150; // Snake moves every 150ms (~6.6 moves/sec)
+const MOVE_INTERVAL = 150; // ms per move
 const FPS = 60;
 const blocks = {};
 
@@ -131,6 +131,34 @@ function handleKeydown(event) {
   else if (key === 'arrowright' && direction !== 'left') direction = 'right';
 }
 
+let touchStartX = 0;
+let touchStartY = 0;
+let touchEndX = 0;
+let touchEndY = 0;
+
+function handleTouchStart(e) {
+  const touch = e.touches[0];
+  touchStartX = touch.clientX;
+  touchStartY = touch.clientY;
+}
+
+function handleTouchEnd(e) {
+  const touch = e.changedTouches[0];
+  touchEndX = touch.clientX;
+  touchEndY = touch.clientY;
+
+  const diffX = touchEndX - touchStartX;
+  const diffY = touchEndY - touchStartY;
+
+  if (Math.abs(diffX) > Math.abs(diffY)) {
+    if (diffX > 50 && direction !== 'left') direction = 'right';
+    else if (diffX < -50 && direction !== 'right') direction = 'left';
+  } else {
+    if (diffY > 50 && direction !== 'up') direction = 'down';
+    else if (diffY < -50 && direction !== 'down') direction = 'up';
+  }
+}
+
 function updateTimer() {
   seconds++;
   if (seconds >= 60) {
@@ -185,5 +213,7 @@ function startGame() {
 
 window.addEventListener('resize', renderGrid);
 window.addEventListener('keydown', handleKeydown);
+board.addEventListener('touchstart', handleTouchStart);
+board.addEventListener('touchend', handleTouchEnd);
 startButton.addEventListener('click', startGame);
 retryButton.addEventListener('click', startGame);
