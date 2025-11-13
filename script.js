@@ -1,219 +1,186 @@
+// ===== 🎮 ELEMENT REFERENCES =====
 const board = document.querySelector('.board');
-const startButton = document.querySelector('#btn-start');
-const retryButton = document.querySelector('#btn-retry');
-const startModal = document.querySelector('#startModal');
-const gameOverModal = document.querySelector('#gameOverModal');
-const timeDisplay = document.querySelector('#time');
-const scoreDisplay = document.querySelector('#current-Score');
-const highScoreDisplay = document.querySelector('#high-Score');
+const startButton = document.getElementById('btn-start');
+const restartButton = document.getElementById('btn-restart');
+const startModal = document.getElementById('startModal');
+const gameOverModal = document.getElementById('gameOverModal');
 
-const BLOCK_SIZE = 50;
-const GAP_SIZE = 5;
-const MOVE_INTERVAL = 150; // ms per move
-const FPS = 60;
-const blocks = {};
+const scoreEl = document.getElementById('score');
+const highScoreEl = document.getElementById('highScore');
+const finalScoreEl = document.getElementById('finalScore');
+const highScoreDisplay = document.getElementById('highScoreDisplay');
+const timerEl = document.getElementById('timer');
 
-let snake = [{ x: 1, y: 2 }];
-let direction = 'right';
-let columns = 0;
-let rows = 0;
-let lastMoveTime = 0;
-let gameRunning = false;
-let food = { x: 0, y: 0 };
+// ===== ⚙️ GAME CONSTANTS =====
+const GRID_SIZE = 20;
+const SPEED = 100;
+const CELL_COUNT = GRID_SIZE * GRID_SIZE;
+
+let snake = [];
+let food = {};
+let direction = { x: 1, y: 0 };
 let score = 0;
-let highScore = 0;
-let seconds = 0;
-let minutes = 0;
-let timerLoop = null;
+let highScore = parseInt(localStorage.getItem('highScore')) || 0;
+let gameRunning = false;
+let loop, timerLoop, timeElapsed = 0;
 
-function generateFood() {
+// 👁️ For eye blinking animation
+let blinkCounter = 0;
+let blinking = false;
+
+highScoreEl.textContent = highScore;
+
+// ===== 🧱 INIT BOARD =====
+for (let i = 0; i < CELL_COUNT; i++) {
+  const div = document.createElement('div');
+  board.appendChild(div);
+}
+const cells = board.querySelectorAll('div');
+
+// ===== 🔁 RESET GAME =====
+function resetGame() {
+  snake = [{ x: 10, y: 10 }];
+  direction = { x: 1, y: 0 };
+  score = 0;
+  timeElapsed = 0;
+  scoreEl.textContent = score;
+  timerEl.textContent = '0s';
+  spawnFood();
+  draw();
+}
+
+// ===== 🎨 DRAW LOGIC =====
+function draw() {
+  cells.forEach(c => {
+    c.textContent = '';
+    c.style.backgroundColor = '#000';
+  });
+
+  // Draw snake body
+  snake.forEach((part, i) => {
+    const index = part.y * GRID_SIZE + part.x;
+    const cell = cells[index];
+    const snakeColor = score >= 50 ? '#fff' : 'var(--snake-color)';
+    cell.style.backgroundColor = snakeColor;
+
+    // Draw eyes on the head
+    if (i === 0) drawSnakeEyes(cell);
+  });
+
+  // Draw food
+  const foodIndex = food.y * GRID_SIZE + food.x;
+  cells[foodIndex].textContent = food.type === 'red' ? '🍎' : '🍏';
+}
+
+// ===== 🧠 DRAW EYES =====
+function drawSnakeEyes(headCell) {
+  blinkCounter++;
+  if (blinkCounter % 200 === 0) blinking = true;
+  if (blinkCounter % 210 === 0) blinking = false;
+
+  const dx = food.x - snake[0].x;
+  const dy = food.y - snake[0].y;
+  const horizontal = Math.abs(dx) > Math.abs(dy);
+  let eyeSymbol = '👀';
+
+  // Simulate slight eye roll/blink variation
+  if (blinking) {
+    headCell.textContent = Math.random() < 0.5 ? '😑' : '😴';
+    return;
+  }
+
+  // Direction-based eyes
+  if (horizontal) {
+    eyeSymbol = dx > 0 ? '👉👀' : '👀👈';
+  } else {
+    eyeSymbol = dy > 0 ? '👇👀' : '👆👀';
+  }
+
+  headCell.textContent = '👀';
+}
+
+// ===== 🍎 SPAWN FOOD =====
+function spawnFood() {
+  const type = Math.random() < 0.7 ? 'red' : 'green';
   food = {
-    x: Math.floor(Math.random() * columns),
-    y: Math.floor(Math.random() * rows)
+    x: Math.floor(Math.random() * GRID_SIZE),
+    y: Math.floor(Math.random() * GRID_SIZE),
+    type,
   };
 }
 
-function renderGrid() {
-  board.innerHTML = '';
-  columns = Math.floor(board.clientWidth / (BLOCK_SIZE + GAP_SIZE));
-  rows = Math.floor(board.clientHeight / (BLOCK_SIZE + GAP_SIZE));
+// ===== 🚀 MOVE SNAKE =====
+function move() {
+  const newHead = {
+    x: (snake[0].x + direction.x + GRID_SIZE) % GRID_SIZE,
+    y: (snake[0].y + direction.y + GRID_SIZE) % GRID_SIZE,
+  };
 
-  Object.assign(board.style, {
-    display: 'grid',
-    gridTemplateColumns: `repeat(${columns}, ${BLOCK_SIZE}px)`,
-    gridTemplateRows: `repeat(${rows}, ${BLOCK_SIZE}px)`,
-    gap: `${GAP_SIZE}px`,
-    justifyContent: 'center',
-    alignContent: 'center'
-  });
-
-  Object.keys(blocks).forEach(key => delete blocks[key]);
-
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < columns; col++) {
-      const block = document.createElement('div');
-      block.classList.add('block');
-      Object.assign(block.style, {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#1f1f1f',
-      });
-      board.appendChild(block);
-      blocks[`${row}-${col}`] = block;
-    }
-  }
-
-  renderSnake();
-  renderFood();
-}
-
-function renderSnake() {
-  snake.forEach(({ x, y }) => {
-    const key = `${y}-${x}`;
-    if (blocks[key]) blocks[key].style.backgroundColor = 'limegreen';
-  });
-}
-
-function renderFood() {
-  const key = `${food.y}-${food.x}`;
-  if (blocks[key]) blocks[key].style.backgroundColor = 'red';
-}
-
-function moveSnake() {
-  const head = { ...snake[snake.length - 1] };
-  if (direction === 'left') head.x -= 1;
-  else if (direction === 'right') head.x += 1;
-  else if (direction === 'up') head.y -= 1;
-  else if (direction === 'down') head.y += 1;
-
-  if (head.x < 0 || head.x >= columns || head.y < 0 || head.y >= rows) {
+  // Check self-collision
+  if (snake.some(p => p.x === newHead.x && p.y === newHead.y)) {
     endGame();
     return;
   }
 
-  if (snake.some(segment => segment.x === head.x && segment.y === head.y)) {
-    endGame();
-    return;
-  }
+  snake.unshift(newHead);
 
-  if (head.x === food.x && head.y === food.y) {
-    snake.push(head);
-    score += 5;
-    updateScore();
-    generateFood();
+  // Eating logic
+  if (newHead.x === food.x && newHead.y === food.y) {
+    score += food.type === 'red' ? 5 : 10;
+    scoreEl.textContent = score;
+    spawnFood();
   } else {
-    snake.push(head);
-    snake.shift();
-  }
-}
-
-function gameLoop(timestamp) {
-  if (!gameRunning) return;
-
-  if (timestamp - lastMoveTime >= MOVE_INTERVAL) {
-    lastMoveTime = timestamp;
-    moveSnake();
+    snake.pop();
   }
 
-  Object.values(blocks).forEach(block => block.style.backgroundColor = '#1f1f1f');
-  renderSnake();
-  renderFood();
-
-  requestAnimationFrame(gameLoop);
+  draw();
 }
 
-function handleKeydown(event) {
-  const key = event.key.toLowerCase();
-  if (key === 'arrowup' && direction !== 'down') direction = 'up';
-  else if (key === 'arrowdown' && direction !== 'up') direction = 'down';
-  else if (key === 'arrowleft' && direction !== 'right') direction = 'left';
-  else if (key === 'arrowright' && direction !== 'left') direction = 'right';
-}
+// ===== 🕹 START GAME =====
+function startGame() {
+  gameRunning = true;
+  startModal.style.display = 'none';
+  gameOverModal.style.display = 'none';
+  resetGame();
 
-let touchStartX = 0;
-let touchStartY = 0;
-let touchEndX = 0;
-let touchEndY = 0;
-
-function handleTouchStart(e) {
-  const touch = e.touches[0];
-  touchStartX = touch.clientX;
-  touchStartY = touch.clientY;
-}
-
-function handleTouchEnd(e) {
-  const touch = e.changedTouches[0];
-  touchEndX = touch.clientX;
-  touchEndY = touch.clientY;
-
-  const diffX = touchEndX - touchStartX;
-  const diffY = touchEndY - touchStartY;
-
-  if (Math.abs(diffX) > Math.abs(diffY)) {
-    if (diffX > 50 && direction !== 'left') direction = 'right';
-    else if (diffX < -50 && direction !== 'right') direction = 'left';
-  } else {
-    if (diffY > 50 && direction !== 'up') direction = 'down';
-    else if (diffY < -50 && direction !== 'down') direction = 'up';
-  }
-}
-
-function updateTimer() {
-  seconds++;
-  if (seconds >= 60) {
-    seconds = 0;
-    minutes++;
-  }
-  const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-  timeDisplay.textContent = formattedTime;
-}
-
-function resetTimer() {
+  clearInterval(loop);
   clearInterval(timerLoop);
-  seconds = 0;
-  minutes = 0;
-  timeDisplay.textContent = '00:00';
+
+  loop = setInterval(move, SPEED);
+  timerLoop = setInterval(() => {
+    timeElapsed++;
+    timerEl.textContent = timeElapsed + 's';
+  }, 1000);
 }
 
-function updateScore() {
-  scoreDisplay.textContent = score;
+// ===== 💀 END GAME =====
+function endGame() {
+  clearInterval(loop);
+  clearInterval(timerLoop);
+  gameRunning = false;
+
   if (score > highScore) {
     highScore = score;
-    highScoreDisplay.textContent = highScore;
+    localStorage.setItem('highScore', highScore);
   }
-}
 
-function resetScore() {
-  score = 0;
-  scoreDisplay.textContent = '0';
-}
-
-function endGame() {
-  gameRunning = false;
-  clearInterval(timerLoop);
+  finalScoreEl.textContent = score;
+  highScoreDisplay.textContent = highScore;
+  highScoreEl.textContent = highScore;
   gameOverModal.style.display = 'flex';
 }
 
-function startGame() {
-  startModal.style.display = 'none';
-  gameOverModal.style.display = 'none';
-  snake = [{ x: 1, y: 2 }];
-  direction = 'right';
-  generateFood();
-  renderGrid();
-  resetTimer();
-  resetScore();
-  clearInterval(timerLoop);
-  timerLoop = setInterval(updateTimer, 1000);
-  gameRunning = true;
-  lastMoveTime = 0;
-  requestAnimationFrame(gameLoop);
-}
+// ===== 🎮 CONTROLS =====
+window.addEventListener('keydown', e => {
+  if (!gameRunning) return;
+  switch (e.key) {
+    case 'ArrowUp': if (direction.y === 0) direction = { x: 0, y: -1 }; break;
+    case 'ArrowDown': if (direction.y === 0) direction = { x: 0, y: 1 }; break;
+    case 'ArrowLeft': if (direction.x === 0) direction = { x: -1, y: 0 }; break;
+    case 'ArrowRight': if (direction.x === 0) direction = { x: 1, y: 0 }; break;
+  }
+});
 
-window.addEventListener('resize', renderGrid);
-window.addEventListener('keydown', handleKeydown);
-board.addEventListener('touchstart', handleTouchStart);
-board.addEventListener('touchend', handleTouchEnd);
+// ===== 🧩 BUTTON EVENTS =====
 startButton.addEventListener('click', startGame);
-retryButton.addEventListener('click', startGame);
+restartButton.addEventListener('click', startGame);
