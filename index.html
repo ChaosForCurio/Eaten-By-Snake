@@ -46,37 +46,40 @@
 
 <body>
 <main>
-  <section>
-    <div class="infos">
-      <div class="info">
-        <h3>High Score: <span id="high-Score">0</span></h3>
+    <!-- Info Section -->
+    <section>
+      <div class="infos">
+        <div class="info">
+          <h3>Score: <span id="score">0</span></h3>
+        </div>
+        <div class="info">
+          <h3>High Score: <span id="highScore">0</span></h3>
+        </div>
+        <div class="info">
+          <h3>Time: <span id="timer">0s</span></h3>
+        </div>
       </div>
-      <div class="info">
-        <h3>Score: <span id="current-Score">0</span></h3>
-      </div>
-      <div class="info">
-        <h3>Time: <span id="time">00:00</span></h3>
-      </div>
-    </div>
-    <div class="board"></div>
-  </section>
+      <div class="board"></div>
+    </section>
 
-  <!-- Start Game Modal -->
-  <div class="modal" id="startModal">
-    <div class="modal-content">
-      <h3>WELCOME TO EATEN BY SNAKE</h3>
-      <button id="btn-start" class="btn">Start Eating</button>
+    <!-- Start Modal -->
+    <div class="modal" id="startModal">
+      <div class="modal-content">
+        <h2>Ready To Get Eaten By Snake 🐍</h2>
+        <button id="btn-start" class="btn">Start Game</button>
+        <button id="btn-settings" class="btn secondary">Settings ⚙️</button>
+      </div>
     </div>
-  </div>
 
-  <!-- Game Over Modal -->
-  <div class="modal" id="gameOverModal" style="display: none;">
-    <div class="modal-content">
-      <h3>GAME OVER</h3>
-      <button id="btn-retry" class="btn">Replay?</button>
+    <!-- Game Over Modal -->
+    <div class="modal" id="gameOverModal" style="display: none;">
+      <div class="modal-content">
+        <p class="final-score">Score: <span id="finalScore">0</span></p>
+        <p class="high-score">High Score: <span id="highScoreDisplay">0</span></p>
+        <button id="btn-restart" class="btn">Restart</button>
+      </div>
     </div>
-  </div>
-</main>
+  </main>
 
   <script src="script.js"></script>
   
