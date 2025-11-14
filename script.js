@@ -10,6 +10,9 @@ const highScoreEl = document.getElementById('highScore');
 const finalScoreEl = document.getElementById('finalScore');
 const highScoreDisplay = document.getElementById('highScoreDisplay');
 const timerEl = document.getElementById('timer');
+const finalTimeEl = document.getElementById('finalTime');
+const gameOverMessage = document.getElementById('gameOverMessage');
+const newHighScoreBanner = document.getElementById('newHighScoreBanner');
 
 // ===== ⚙️ GAME CONSTANTS =====
 const GRID_SIZE = 20;
@@ -159,14 +162,39 @@ function endGame() {
   clearInterval(timerLoop);
   gameRunning = false;
 
-  if (score > highScore) {
+  const isNewHighScore = score > highScore;
+  
+  if (isNewHighScore) {
     highScore = score;
     localStorage.setItem('highScore', highScore);
   }
 
+  // Update game over display
   finalScoreEl.textContent = score;
+  finalTimeEl.textContent = timeElapsed + 's';
   highScoreDisplay.textContent = highScore;
   highScoreEl.textContent = highScore;
+  
+  // Show/hide new high score banner
+  if (isNewHighScore) {
+    newHighScoreBanner.style.display = 'block';
+  } else {
+    newHighScoreBanner.style.display = 'none';
+  }
+  
+  // Dynamic game over messages based on performance
+  if (isNewHighScore) {
+    gameOverMessage.textContent = "Incredible! You've set a new record! 🏆";
+  } else if (score >= highScore * 0.8) {
+    gameOverMessage.textContent = "So close! You almost beat your record!";
+  } else if (score >= 50) {
+    gameOverMessage.textContent = "Great job! Keep practicing!";
+  } else if (score >= 20) {
+    gameOverMessage.textContent = "Not bad! You're getting better!";
+  } else {
+    gameOverMessage.textContent = "Better luck next time!";
+  }
+  
   gameOverModal.style.display = 'flex';
 }
 
